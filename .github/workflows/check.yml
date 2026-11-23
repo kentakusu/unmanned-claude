@@ -1,0 +1,34 @@
+name: 漏れの検査
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  leakcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 語のリストは、在れば使う。無ければ A は走らず、走らなかったことが出力に出る。
+      # リストそのものを置くと、それが固有名詞の一覧になるため、ここには置かない。
+      - name: 語のリストを用意する（在れば）
+        env:
+          WORDS: ${{ secrets.LEAKCHECK_WORDS }}
+        run: |
+          set -o pipefail
+          if [ -n "$WORDS" ]; then
+            printf '%s\n' "$WORDS" > /tmp/words.txt
+            echo "語のリストを置きました（$(grep -c . /tmp/words.txt) 語）"
+          else
+            echo "語のリストは渡されていません（A は走りません）"
+          fi
+
+      - name: 検査する
+        run: |
+          set -o pipefail
+          if [ -f /tmp/words.txt ]; then
+            python3 tools/leakcheck.py --words /tmp/words.txt
+          else
+            python3 tools/leakcheck.py
+          fi
